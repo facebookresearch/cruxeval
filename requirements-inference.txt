@@ -1,0 +1,5 @@
+torch
+datasets
+transformers==4.34.1
+vllm==0.2.2
+tqdm
