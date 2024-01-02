@@ -167,4 +167,5 @@ If you find this repository useful, please cite this as
 TODO
 ```
 
-
+## License
+CRUXEval is is MIT licensed, as found in the LICENSE file.
