@@ -1,0 +1,8 @@
+numpy
+tabulate
+torch
+datasets
+transformers==4.36.2
+vllm==0.2.6
+tqdm
+openai
