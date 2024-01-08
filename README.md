@@ -9,7 +9,7 @@
     <a href="#-acknowledgements">🙏 Acknowledgements</a>
 </p>
 
-![image](https://github.com/facebookresearch/cruxeval/assets/7492257/4951c067-e6d0-489a-a445-37ff1c4ad1e4)
+![image](https://github.com/facebookresearch/cruxeval/assets/7492257/b1fecb48-2355-4d60-9d97-1d09e793bd82)
 
 CRUXEval (**C**ode **R**easoning, **U**nderstanding, and e**X**ecution **Eval**uation) is a benchmark of 800 Python functions and input-output pairs. The benchmark consists of two tasks, CRUXEval-I (input prediction) and CRUXEval-O (output prediction). 
 
