@@ -78,7 +78,12 @@ This repository is built on top of [`bigcode-evaluation-harness`](https://github
 ## 📝 Citation
 If you find this repository useful, please cite this as
 ```
-TODO
+@article{gu2024cruxeval,
+  title={CRUXEval: A Benchmark for Code Reasoning, Understanding and Execution}, 
+  author={Alex Gu and Baptiste Rozière and Hugh Leather and Armando Solar-Lezama and Gabriel Synnaeve and Sida I. Wang},
+  year={2024},
+  journal = {arXiv preprint arXiv:2401.03065},
+}
 ```
 
 ## License
