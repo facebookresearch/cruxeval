@@ -1,7 +1,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import sys
-assert (3, 7) <= sys.version_info < (3,10), 'ByteCode is not very stable and may change across python versions. The actual filtering was done on Python 3.9'
+print(sys.version_info)
+assert (3, 7, 0) < sys.version_info < (3, 10), 'ByteCode is not very stable and may change across python versions. The actual filtering was done on Python 3.9'
 
 import opcode
 import dis
@@ -13,6 +14,7 @@ import ast
 
 bad = Counter() 
 numsteps = 0
+MAX_STEPS = 100000
 NUM_TYPES = [int, float]
 LIST_TYPES = [list, str]
 
@@ -28,12 +30,18 @@ def filter_trace(frame, event, arg, verbose=0):
     code = frame.f_code
     offset = frame.f_lasti
     numsteps += 1
+
+    if numsteps > MAX_STEPS:
+       sys.settrace(None)
+       bad['MAX_STEPS'] = 1
+       return None
+    
     # print('event', event, f"{str(arg):>4}")
-    if event == 'exception':
-        sys.settrace(None)
-        # a bit wrong to filter, since some exceptions are part of normal execution.
-        bad['EXCEPTION'] += 1
-        return None
+    # if event == 'exception':
+    #     sys.settrace(None)
+    #     # a bit wrong to filter, since some exceptions are part of normal execution.
+    #     bad['EXCEPTION'] += 1
+    #     return None
 
     opname = opcode.opname[code.co_code[offset]]
     
@@ -58,7 +66,7 @@ def filter_trace(frame, event, arg, verbose=0):
                 if abs(o1) > 3 and abs(o2) > 3:
                     bad['OPS_BIG'] += 1
                     # print_trace()
-                if opname.endswith('_POWER') and abs(o1) > 1:
+                if opname.endswith('_POWER') and abs(o2) > 1:
                     bad['POWER_BIG'] += 1
                 if opname.endswith('_TRUE_DIVIDE'):
                     bad['TRUE_DIVIDE'] += 1
@@ -72,19 +80,49 @@ def filter_trace(frame, event, arg, verbose=0):
 
     return lambda frame, event, arg: filter_trace(frame, event, arg, verbose=verbose)
 
+def check_assert(assert_line):
+    # assert f(no_f) = literal
+    b = ast.parse(assert_line).body[0]
+    if not(type(b) == ast.Assert
+        and type(b.test) == ast.Compare
+        and type(b.test.left) == ast.Call
+        and type(b.test.left.func) == ast.Name
+        and b.test.left.func.id == 'f'
+        and len(b.test.comparators) == 1):
+        return False
+    
+    # output is a literal
+    literal_types = [ast.Constant, ast.List, ast.Tuple, ast.Set, ast.Dict, ast.Load, ast.UnaryOp, ast.USub]
+    output = b.test.comparators[0]
+    for node in ast.walk(output):
+        if type(node) not in literal_types:
+            return False
+    
+    # input should not call f again
+    inputs = b.test.left.args
+    for arg in inputs:
+        for node in ast.walk(arg):
+            if type(node) == ast.Call and type(node.func) == ast.Name and type(node.func.id) == 'f':
+                print(ast.dump(node))
+                return False
 
-def annotate(code, verbose=0):
+    return True
+
+def annotate(code, timeout=2, verbose=0):
     global bad, numsteps
     bad = Counter()
     numsteps = 0
     num_ins = 0
 
     # Filters to remove undesirable code before executing
+    # This does not make execution completely safe
     try:
         if not code.replace('\t', '').replace('\n', '').isprintable():
             raise ForbiddenException('NOT_PRINTABLE')
 
-        forbid = ['import ', '__builtins__', 'input(', 'hash(', 'set(']
+        forbid = ['import ', '__builtins__', '__builtin__', 'globals()', 'open(', 'exec(', 'eval('] + \
+            ['input(', 'hash(', 'set(', 'locals()'] # undesirable
+        
         for f in forbid:
             if f in code:
                 raise ForbiddenException(f)
@@ -97,17 +135,9 @@ def annotate(code, verbose=0):
                 bad['IMPORT_NAME'] += 1
         
         last_line = code.strip().split('\n')[-1]
-        if not last_line.startswith('assert f('):
+        if not check_assert(last_line):
             raise ForbiddenException('Improper Assert: ' + last_line)
-        
-        b = ast.parse(last_line).body[0]
-        if not(type(b) == ast.Assert
-            and type(b.test) == ast.Compare
-            and type(b.test.left) == ast.Call
-            and type(b.test.left.func) == ast.Name
-            and b.test.left.func.id == 'f'):
-            print(last_line)
-            raise ForbiddenException('Improper Assert: ' + last_line)
+
     except SyntaxError as e:
         bad['SyntaxError'] += 1
         bad[e] += 1
@@ -119,11 +149,10 @@ def annotate(code, verbose=0):
 
     ## Fine on syntax, now do runtime filters
     def signal_handler(signum, frame):
-        print(code)
         raise TimeoutException("Timed out!")
 
     signal.signal(signal.SIGALRM, signal_handler)
-    signal.alarm(2)
+    signal.alarm(timeout)
 
     try:
         sys.settrace(lambda frame, event, arg: filter_trace(frame, event, arg, verbose=verbose))
@@ -132,7 +161,7 @@ def annotate(code, verbose=0):
     except TimeoutException as e:
         sys.settrace(None)
         bad['TIMED_OUT'] += 1
-        print(code)
+        # print(code)
     except Exception as e:
         sys.settrace(None)
         if verbose > 1:
