@@ -27,8 +27,8 @@ def extract_answer_direct_output(gen):
 def extract_answer_direct_input(gen):
     if "==" in gen:
         gen = gen.split("==")[0].strip()
-    if "assert" in gen:
-        gen = gen.split("assert")[1].strip()
+    if "assert f" in gen:
+        gen = "f" + gen.split("assert f")[1].strip()
     return gen.strip()
 
 def extract_answer_cot_input(gen):
@@ -36,8 +36,8 @@ def extract_answer_cot_input(gen):
         gen = gen.split("[ANSWER]")[1].strip()
         if "==" in gen:
             gen = gen.split("==")[0]
-        if "assert" in gen:
-            gen = gen.split("assert")[1].strip()
+        if "assert f" in gen:
+            gen = "f" + gen.split("assert f")[1].strip()
         return gen.strip()
     else:
         return gen.split('\n')[-1].strip()

@@ -47,8 +47,8 @@ class InputPrediction(Task):
                 generation = generation.split("[ANSWER]")[1].strip()
         if "==" in generation:
             generation = generation.split("==")[0].strip()
-        if "assert" in generation:
-            generation = generation.split("assert")[1].strip()
+        if "assert f" in generation:
+            generation = "f" + generation.split("assert f")[1].strip()
         return generation.strip()
 
     def process_results(self, generations, references):
