@@ -47,7 +47,7 @@ python evaluate_generations.py \
     --mode input
 ```
 
-The script should take around a minute or so. An example of input and output generations in the correct format for Code Llama 7B can be found in the `model_generations` folder, and an example of the corresponding execution result file is in `evaluation/evaluation_results`. The execution results will be written to the file you specify in `--scored_results_path`. It contains `raw_generations` (the dictionary of raw generations for each sample that was provided), `raw_scored_generations` (the dictionary of scored results for each sample), and overall `pass_at_1` and `pass_at_5` scores. As an example to reproduce the scoring of Code Llama 7B CRUXEval-I generations, run the following command in the `evaluation` folder:
+The script should take around a minute or so. An example of input and output generations in the correct format for Code Llama 7B can be found in the `samples/model_generations` folder, and an example of the corresponding execution result file is in `samples/evaluation_results`. The execution results will be written to the file you specify in `--scored_results_path`. It contains `raw_generations` (the dictionary of raw generations for each sample that was provided), `raw_scored_generations` (the dictionary of scored results for each sample), and overall `pass_at_1` and `pass_at_5` scores. As an example to reproduce the scoring of Code Llama 7B CRUXEval-I generations, run the following command in the `evaluation` folder:
 ```
 python3 evaluate_generations.py \
     --generations_path ../samples/model_generations/sample_codellama-7b_temp0.2_input/generations.json \
