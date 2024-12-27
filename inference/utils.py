@@ -76,6 +76,8 @@ def complete_code(
     n_tasks,
     prefix="",
     postprocess=True,
+    backend='vllm',
+    tokenizer=None,
 ):
     max_length_generation = sampling_params.max_tokens
     code_gens = defaultdict(list)
@@ -92,12 +94,55 @@ def complete_code(
             )
             continue
         sampling_params.max_tokens = max_length_generation - num_tokens
-        outputs = model.generate(
-            prompt_token_ids=inputs, sampling_params=sampling_params, use_tqdm=False
-        )
 
         generated_tasks = batch["row_index"].repeat(batch_size)
-        generated_texts = [o.text for o in outputs[0].outputs]
+        if backend == 'vllm':
+            outputs = model.generate(
+                prompt_token_ids=inputs, sampling_params=sampling_params, use_tqdm=False
+            )
+            generated_texts = [o.text for o in outputs[0].outputs]
+        elif backend == 'gptqmodel':
+            inputs_tensor = torch.tensor(inputs).to(model.device)
+            model_kwargs = {
+                "input_ids": inputs_tensor,
+                "max_new_tokens": sampling_params.max_tokens,
+                "num_return_sequences": sampling_params.n,
+            }
+
+            # normalize stop_strings
+            if sampling_params.stop is not None:
+                if isinstance(sampling_params.stop, str):
+                    sampling_params.stop = [sampling_params.stop]
+
+                # transformer require tokenizer to be passed when stop_strings is used
+                model_kwargs["stop_strings"] = sampling_params.stop
+                model_kwargs["tokenizer"] = tokenizer
+
+            do_sample = True if sampling_params.temperature != 1.0 else False
+
+            if do_sample:
+                model_kwargs["temperature"] = sampling_params.temperature
+                model_kwargs["do_sample"] = do_sample
+
+            if sampling_params.top_k > 0:
+                model_kwargs["top_k"] = sampling_params.top_k
+
+            if sampling_params.top_p != 1.0:
+                model_kwargs["top_p"] = sampling_params.top_p
+
+            outputs = model.generate(**model_kwargs)
+            generated_texts = tokenizer.batch_decode(
+                outputs[:, inputs_tensor.size(-1):],
+                skip_special_tokens=True,
+            )
+
+            # transformers will inlcude stop_string in output, normalize (strip) to align with vllm default
+            if sampling_params.stop is not None:
+                for stop_string in sampling_params.stop:
+                    generated_texts = [generated_text.replace(stop_string, "") for generated_text in generated_texts]
+        else:
+            raise ValueError("backend support: [vllm, gptqmodel]")
+
         combined_texts = [
             batch["prompt"][0] + generated_text for generated_text in generated_texts
         ]

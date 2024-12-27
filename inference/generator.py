@@ -65,7 +65,7 @@ class Generator:
         ds_loader = DataLoader(ds_tokenized, batch_size=1)
 
         generations, generations_raw = complete_code(
-            task, self.model, sampling_params, ds_loader, self.args.batch_size, n_tasks
+            task, self.model, sampling_params, ds_loader, self.args.batch_size, n_tasks, backend=self.args.backend, tokenizer=self.tokenizer
         )
 
         references = [task.get_reference(dataset[i]) for i in range(n_tasks)]
